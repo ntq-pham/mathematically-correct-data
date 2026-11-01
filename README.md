@@ -1,14 +1,16 @@
 # Mathematically Correct community data
 
-Daily community card stats for
+Daily community card stats and per-build win models for
 [Mathematically Correct](https://github.com/ntq-pham/mathematically-correct),
-a decision-advisor mod for Slay the Spire 2. The mod downloads the table for
-the player's game build from the `community` release of this repo.
+a decision-advisor mod for Slay the Spire 2. The mod downloads the table and
+the model for the player's game build from the `community` release of this
+repo.
 
-This repo is written by a scheduled job in the mod's repo
-(`.github/workflows/community-daily.yml`, running `pipeline/mc/community_daily.py`).
-Do not edit it by hand: the job rewrites this README and replaces the release
-assets.
+This repo is written by two scheduled jobs in the mod's repo:
+`.github/workflows/community-daily.yml` (`pipeline/mc/community_daily.py`)
+writes the stats tables, and `.github/workflows/model-daily.yml`
+(`pipeline/mc/model_daily.py`) writes the models. Do not edit it by hand: the
+jobs rewrite this README and replace the release assets.
 
 ## Source
 
@@ -28,8 +30,12 @@ The files are derived aggregates. They hold no run data: no runs, seeds,
 player names, Steam IDs or upload tokens. Each table stores counts per card,
 character and act phase (times offered, times picked, wins when picked, wins
 when skipped), with rows below the minimum sample left out. Every run is A10,
-so the tables (format 2) store one ascension band and record the scope in
-their header.
+so the tables store one ascension band and record the scope in their header.
+Since format 3 a table also carries the numbers behind the mod's card page:
+per card, the same counts by act phase and by copies already held, and the
+mod's model averaged over the rewards that offered the card (which held cards
+and relics it does better or worse with, and which deck shortfalls it fixes).
+Format 2 tables have no card page numbers.
 Game data and names belong to Mega Crit.
 
 | Asset | What |
@@ -51,3 +57,34 @@ sorted by build. Its columns:
 | `table_bytes` | The size of the `.mcstats` file in bytes |
 
 A table is rebuilt only when its build's export changes on Spire Codex.
+
+## The models
+
+A model is trained per game build from the same export, on base-game A10 runs
+only, and published only when it passes every quality gate of the mod's
+`docs/MODEL.md` section 7. Its report says how it was checked and how it
+differs from the model players had before. A build whose model fails a gate
+gets no model; the mod keeps using the newest one it has, or the one it ships
+with. The model files hold decision trees and the card, relic and encounter
+tables they read. They hold no run data.
+
+| Asset | What |
+|---|---|
+| `models.tsv` | One row per build with a model |
+| `model-<build>.mcmodel` | The model for one build |
+| `model-report-<build>.md` | How that model was trained and checked |
+| `model-attempts.tsv` | Builds whose last training failed a gate, and which gates |
+
+`models.tsv` has the same format as `index.tsv`, sorted by build version. Its
+columns:
+
+| Column | Meaning |
+|---|---|
+| `build` | The game build |
+| `model_format` | The `.mcmodel` format version |
+| `export_sha256` | The sha256 of the Spire Codex export the model was trained on |
+| `model_sha256` | The sha256 of the `.mcmodel` file |
+| `model_bytes` | The size of the `.mcmodel` file in bytes |
+| `runs_train`, `runs_valid`, `runs_test` | The runs in each split of the training data |
+
+A build is retrained only when its export changes after a failed attempt.
